@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gear Defenders 深度分析报告</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #faf9f7;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --accent: #c9a96e;
+            --accent-dark: #8b7355;
+            --border: #e5e2dd;
+            --yoka-red: #e74c3c;
+        }
+
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(90deg, rgba(201, 169, 110, 0.03) 1px, transparent 1px),
+                linear-gradient(rgba(201, 169, 110, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+            position: relative;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            border-left: 2px solid var(--accent);
+            border-top: 2px solid var(--accent);
+            opacity: 0.6;
+        }
+
+        .container::after {
+            content: '';
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-right: 2px solid var(--accent);
+            border-bottom: 2px solid var(--accent);
+            opacity: 0.6;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 24px;
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--border) 15%, var(--border) 85%, transparent);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            height: 56px;
+            width: auto;
+            vertical-align: middle;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: row;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .brand-dept {
+            font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #555;
+        }
+
+        .brand-divider {
+            width: 1px;
+            height: 12px;
+            background: var(--border);
+        }
+
+        .brand-team {
+            font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-size: 13px;
+            font-weight: 400;
+            letter-spacing: 0px;
+            color: var(--text-secondary);
+        }
+
+        nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        nav a {
+            font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            position: relative;
+            padding: 8px 0;
+            transition: color 0.3s;
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        nav a:hover {
+            color: var(--text-primary);
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+        nav a.active {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        nav a.active::after {
+            width: 100%;
+        }
+
+        .nav-divider {
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+
+        .section-conclusion {
+            margin-bottom: 80px;
+        }
+        
+        .section-label {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .section-label::before {
+            content: '';
+            width: 32px;
+            height: 3px;
+            background: var(--accent);
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--border), transparent);
+            margin-left: 12px;
+        }
+
+        .section-divider {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
+            margin: 0;
+            position: relative;
+        }
+
+        .section-divider::before {
+            content: '◆';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--accent);
+            font-size: 10px;
+            background: var(--bg);
+            padding: 0 16px;
+        }
+
+        .section-divider-accent {
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+            margin: 0 auto;
+        }
+        
+        .conclusion-text {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 26px;
+            font-weight: 500;
+            line-height: 1.6;
+            color: var(--text-primary);
+            max-width: 900px;
+            margin-bottom: 48px;
+            padding-left: 24px;
+            border-left: 3px solid var(--accent);
+            position: relative;
+        }
+
+        .conclusion-text::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 8px;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        .game-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            margin-bottom: 48px;
+        }
+
+        .game-info-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 24px;
+        }
+
+        .game-info-card h3 {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--accent);
+            display: inline-block;
+        }
+
+        .game-info-card p, .game-info-card li {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .game-info-card ul {
+            padding-left: 20px;
+        }
+
+        .game-info-card li {
+            margin-bottom: 8px;
+        }
+        
+        .conclusion-image {
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--border);
+        }
+
+        .conclusion-image::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            bottom: 12px;
+            border: 1px solid rgba(201, 169, 110, 0.3);
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .conclusion-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .screenshot-item {
+            aspect-ratio: 9/16;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .screenshot-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .image-caption {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        .section-data {
+            margin-bottom: 80px;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+        
+        .kpi-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 24px;
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--accent);
+        }
+
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -1px;
+            width: 3px;
+            height: 0;
+            background: var(--accent-dark);
+            transition: height 0.3s ease, top 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+
+        .kpi-card:hover::after {
+            height: 40px;
+            top: calc(50% - 20px);
+        }
+        
+        .kpi-label {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+        
+        .kpi-value {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 8px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .kpi-value::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 2px;
+            background: var(--accent);
+        }
+        
+        .kpi-unit {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .kpi-change {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 13px;
+            color: #e74c3c;
+        }
+        
+        .kpi-change.up::before {
+            content: '↑';
+            margin-right: 4px;
+        }
+        
+        .kpi-change.down::before {
+            content: '↓';
+            margin-right: 4px;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+        
+        .chart-container {
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 24px;
+            position: relative;
+        }
+
+        .chart-container::before,
+        .chart-container::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--accent);
+            opacity: 0.5;
+        }
+
+        .chart-container::before {
+            bottom: 12px;
+            left: 12px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .chart-container::after {
+            bottom: 12px;
+            right: 12px;
+            border-left: none;
+            border-top: none;
+        }
+        
+        .chart-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .chart-wrapper {
+            height: 320px;
+            position: relative;
+        }
+        
+        .section-content {
+            margin-bottom: 80px;
+        }
+        
+        .insight-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        
+        .insight-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .insight-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 24px;
+            height: 24px;
+            border-left: 2px solid var(--accent);
+            border-top: 2px solid var(--accent);
+            z-index: 1;
+        }
+
+        .insight-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 24px;
+            height: 24px;
+            border-right: 2px solid var(--accent);
+            border-bottom: 2px solid var(--accent);
+            z-index: 1;
+        }
+        
+        .insight-card:hover {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+        
+        .insight-card-image {
+            width: 100%;
+            height: 160px;
+            overflow: hidden;
+        }
+        
+        .insight-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .insight-card:hover .insight-card-image img {
+            transform: scale(1.05);
+        }
+        
+        .insight-card-content {
+            padding: 20px;
+        }
+        
+        .insight-card-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--accent);
+            display: inline-block;
+        }
+        
+        .insight-card-text {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+        
+        .insight-card-text .highlight {
+            background: linear-gradient(120deg, rgba(201, 169, 110, 0.15) 0%, rgba(201, 169, 110, 0.25) 100%);
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+        
+        .insight-card-text .highlight-red {
+            background: linear-gradient(120deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.2) 100%);
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: 600;
+            color: #c0392b;
+        }
+        
+        .insight-card-text .highlight-bold {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* 全局高亮样式 */
+        .highlight {
+            background: linear-gradient(120deg, rgba(201, 169, 110, 0.15) 0%, rgba(201, 169, 110, 0.25) 100%);
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+        
+        .highlight-red {
+            background: linear-gradient(120deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.2) 100%);
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: 600;
+            color: #c0392b;
+        }
+        
+        .highlight-bold {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* 横向时间轴样式 */
+        .timeline-section {
+            margin-bottom: 80px;
+        }
+
+        .timeline-container {
+            position: relative;
+            padding: 40px 0;
+        }
+
+        .timeline-container::before {
+            content: '';
+            position: absolute;
+            top: 68px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 50%, var(--accent) 100%);
+        }
+
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            position: relative;
+        }
+
+        .timeline-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background: var(--accent);
+            border: 3px solid var(--bg);
+            border-radius: 50%;
+            margin-bottom: 16px;
+            z-index: 2;
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        .timeline-content {
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 16px;
+            width: 100%;
+            height: 240px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timeline-date {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .timeline-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--accent);
+            display: block;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .timeline-desc {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 12px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            height: 85px;
+            overflow: hidden;
+        }
+
+        .timeline-desc strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .timeline-company {
+            display: inline-block;
+            background: linear-gradient(120deg, rgba(201, 169, 110, 0.1) 0%, rgba(201, 169, 110, 0.2) 100%);
+            padding: 4px 12px;
+            border-radius: 2px;
+            font-size: 11px;
+            color: var(--accent-dark);
+            margin-top: auto;
+            align-self: center;
+            min-width: 140px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 1024px) {
+            .timeline-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .timeline-container::before {
+                display: none;
+            }
+            .timeline-item::before {
+                margin-bottom: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .timeline-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        footer {
+            background: #1a1a1a;
+            color: #fff;
+            padding: 24px 40px;
+            position: relative;
+        }
+
+        footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent 0%, var(--accent) 20%, var(--accent) 80%, transparent 100%);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .footer-name {
+            font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            color: #fff;
+        }
+
+        .footer-about {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #888;
+        }
+
+        .footer-copyright {
+            max-width: 1200px;
+            margin: 16px auto 0;
+            padding-top: 16px;
+            border-top: 1px solid #333;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+
+        @media (max-width: 1024px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .insight-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .screenshot-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .game-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+            }
+            header {
+                flex-direction: column;
+                gap: 24px;
+                align-items: flex-start;
+            }
+            nav {
+                gap: 24px;
+            }
+            .conclusion-text {
+                font-size: 22px;
+            }
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            .insight-cards {
+                grid-template-columns: 1fr;
+            }
+            .screenshot-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <div class="brand-text">
+                    <span class="brand-dept">战略发展部</span>
+                    <span class="brand-divider"></span>
+                    <span class="brand-team">游戏竞品分析</span>
+                </div>
+            </div>
+            <nav>
+                <a href="#" class="active">游戏概览</a>
+                <div class="nav-divider"></div>
+                <a href="#">收入分析</a>
+                <div class="nav-divider"></div>
+                <a href="#">市场洞察</a>
+                <div class="nav-divider"></div>
+                <a href="#">深度解析</a>
+            </nav>
+        </header>
+
+        <!-- 第一部分：游戏概览与核心结论 -->
+        <section class="section-conclusion">
+            <div class="section-label">游戏概览</div>
+            <h1 class="conclusion-text" style="text-align: justify; max-width: 100%;">
+                Gear Defenders 是疑似由<span class="highlight">波克城市关联企业</span>推出，在出海前就已于2025年5月、9月进行过两拨测试，产品的核心玩法融合<span class="highlight">齿轮合成升级</span>与波次防御战斗，采用Q版卡通美术风格，产品于2025年11月开始在海外热度起势，主要热门市场为<span class="highlight">美国、日本</span>，以IAP+IAA混合变现模式为主，预计累计流水超数千万RMB，仅IAP端各海外市场流水已超<span class="highlight">2000万RMB</span>。
+            </h1>
+
+            <!-- 游戏信息卡片 -->
+            <div class="game-info-grid">
+                <div class="game-info-card">
+                    <h3>玩家好评分析</h3>
+                    <ul>
+                        <li><strong>玩法创新：</strong>放置收集+策略塔防的融合设计，"像拼积木一样构建防御"</li>
+                        <li><strong>操作门槛低：</strong>仅需简单点击放置士兵，适合碎片时间游玩</li>
+                        <li><strong>策略深度：</strong>10+兵种各具特色（步兵、射手、盾兵、魔法骑士），阵容搭配有讲究</li>
+                        <li><strong>成长反馈：</strong>升级、强化、进化机制完善，正反馈循环清晰</li>
+                        <li><strong>关卡丰富：</strong>100+关卡，多样化地形和敌人保持新鲜感</li>
+                        <li><strong>综合评分：</strong>Google Play 4.7/5星，约8.4万条评价</li>
+                    </ul>
+                </div>
+                <div class="game-info-card">
+                    <h3>ST产品数据（仅IAP）</h3>
+                    <ul>
+                        <li><strong>开发商：</strong>MOBIBRAIN TECHNOLOGY PTE. LTD.</li>
+                        <li><strong>热度起势时间：</strong>2025年11月</li>
+                        <li><strong>累计下载量：</strong>941万次</li>
+                        <li><strong>累计净收入：</strong>186万美元</li>
+                        <li><strong>月流水峰值：</strong>45万美元（2026年2月）</li>
+                        <li><strong>主要市场：</strong>美国、日本、韩国、德国</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 游戏截图展示 -->
+            <div class="screenshot-grid">
+                <div class="screenshot-item">
+                    <img src="C:/Users/linhaoqi/WorkBuddy/20260420152540/lay-1.png（主界面）.jpg" alt="Gear Defenders 主界面 - 关卡选择与战斗入口">
+                </div>
+                <div class="screenshot-item">
+                    <img src="C:/Users/linhaoqi/WorkBuddy/20260420152540/lay2.jpg" alt="Gear Defenders 战斗画面 - 齿轮合成与角色放置">
+                </div>
+                <div class="screenshot-item">
+                    <img src="C:/Users/linhaoqi/WorkBuddy/20260420152540/lay3.jpg" alt="Gear Defenders 战斗画面 - 多齿轮合成与敌人波次">
+                </div>
+            </div>
+            <div class="image-caption">
+                图1：Gear Defenders 游戏界面截图（从左至右：主界面关卡选择、齿轮合成战斗、多单位协同作战）
+            </div>
+        </section>
+
+        <!-- 装饰分隔线 -->
+        <div class="section-divider"></div>
+
+        <!-- 产品发展历程时间轴 -->
+        <section class="timeline-section">
+            <div class="section-label">产品发展历程</div>
+            <p style="font-family: 'Noto Serif SC', serif; font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.8;">
+                《GearPaw Defenders!（中文名：齿轮兽卫队）》疑似是 Gear Defenders 的国内版本，由 <strong>Perfeggs</strong> 发行。Perfeggs 是 <strong>波克城市</strong>投资的关联企业，曾成功发行《Slime Legion（国服名称：合合合英雄）》。以下时间轴展示了从合合合英雄到 Gear Defenders 海外走红的完整历程。
+            </p>
+            
+            <div class="timeline-container">
+                <div class="timeline-grid">
+                    <div class="timeline-item">
+                        <div class="timeline-content">
+                            <div class="timeline-date">2023年</div>
+                            <div class="timeline-title">《合合合英雄》国服上线</div>
+                            <div class="timeline-desc">
+                                波克城市投资关联企业 <strong>Perfeggs</strong> 发行的《Slime Legion》国服版本《合合合英雄》正式上线，采用合成+塔防玩法，在国内市场取得良好表现，验证了该玩法组合的商业潜力。
+                            </div>
+                            <span class="timeline-company">Perfeggs × 波克城市</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-content">
+                            <div class="timeline-date">2025年5月</div>
+                            <div class="timeline-title">《齿轮兽卫队》首次国内测试</div>
+                            <div class="timeline-desc">
+                                Perfeggs 在国内开启《GearPaw Defenders!（齿轮兽卫队）》首次测试，玩法为齿轮合成+塔防战斗，与后续海外版本高度相似，收集市场反馈进行产品调优。
+                            </div>
+                            <span class="timeline-company">Perfeggs</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-content">
+                            <div class="timeline-date">2025年9月</div>
+                            <div class="timeline-title">转向海外市场</div>
+                            <div class="timeline-desc">
+                                经过国内两轮测试后，团队调整策略将产品转向海外市场，由新加坡开发商 <strong>MOBIBRAIN TECHNOLOGY</strong> 接手重新包装发行，针对海外用户偏好进行本地化优化。
+                            </div>
+                            <span class="timeline-company">Perfeggs → MOBIBRAIN</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-content">
+                            <div class="timeline-date">2025年11月</div>
+                            <div class="timeline-title">《Gear Defenders》海外上线</div>
+                            <div class="timeline-desc">
+                                更名后的《Gear Defenders》在海外市场正式上线，凭借齿轮合成+波次防御的核心玩法，迅速在美国、日本等市场获得关注，月流水开始快速增长。
+                            </div>
+                            <span class="timeline-company">MOBIBRAIN TECHNOLOGY</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-content">
+                            <div class="timeline-date">2026年2月</div>
+                            <div class="timeline-title">美国、日本大热</div>
+                            <div class="timeline-desc">
+                                《Gear Defenders》在海外迎来月流水峰值 <strong>45万美元</strong>，累计下载量突破900万次，美国市场收入占比36.7%，成功验证了合成塔防玩法在海外市场的商业化潜力。
+                            </div>
+                            <span class="timeline-company">MOBIBRAIN TECHNOLOGY</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 装饰分隔线 -->
+        <div class="section-divider"></div>
+
+        <!-- 第二部分：收入数据分析 -->
+        <section class="section-data">
+            <div class="section-label">收入分析（仅IAP，只关注市场占比及变化趋势）</div>
+            
+            <!-- KPI指标卡片 -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">累计净收入</div>
+                    <div class="kpi-value">186<span class="kpi-unit">万美元</span></div>
+                    <div class="kpi-change up">全周期数据</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">月流水峰值</div>
+                    <div class="kpi-value">45<span class="kpi-unit">万美元</span></div>
+                    <div class="kpi-change up">2026年2月</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">美国收入占比</div>
+                    <div class="kpi-value">36.7<span class="kpi-unit">%</span></div>
+                    <div class="kpi-change up">第一大市场</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">美国下载占比</div>
+                    <div class="kpi-value">14.0<span class="kpi-unit">%</span></div>
+                    <div class="kpi-change up">高付费转化</div>
+                </div>
+            </div>
+            
+            <!-- 图表区域 -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">各地区收入占比（2025.09-2026.04）</div>
+                    <div class="chart-wrapper">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">全球月流水趋势（万美元）</div>
+                    <div class="chart-wrapper">
+                        <canvas id="lineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 装饰分隔线 -->
+        <div class="section-divider"></div>
+
+        <!-- 第三部分：玩家真实反馈 -->
+        <section class="section-content">
+            <div class="section-label">玩家真实反馈</div>
+            
+            <!-- 日本玩家反馈 -->
+            <div style="margin-bottom: 48px;">
+                <h3 style="font-family: 'Noto Sans SC', sans-serif; font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid var(--accent); display: inline-block;">🇯🇵 日本区玩家评价（Google Play 约8.2万条评价）</h3>
+                
+                <div class="insight-cards">
+                    <div class="insight-card">
+                        <div class="insight-card-content">
+                            <h3 class="insight-card-title">好评高频点（占比约78%）</h3>
+                            <div class="insight-card-text">
+                                <span class="highlight-bold">游戏性优秀</span>：战略性与运气平衡得当<br>
+                                <span class="highlight-bold">思考性强</span>：齿轮放置位置决定胜负<br>
+                                <span class="highlight-bold">战斗爽快</span>：随波次升级，战力增强明显<br>
+                                <span class="highlight">轻策略佳作</span>：门槛低但有深度<br>
+                                <span class="highlight">成就感强</span>：战术调整后胜利满足感高
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <div class="insight-card-content">
+                            <h3 class="insight-card-title">差评高频点（占比约22%）</h3>
+                            <div class="insight-card-text">
+                                <span class="highlight-red">广告问题</span>：频率高，观看后闪退/跳转<br>
+                                <span class="highlight-red">VIP缩水</span>：SVIP承诺30天实际7天结束<br>
+                                <span class="highlight-red">奖励无法领取</span>：任务38天后报酬无法领取<br>
+                                <span class="highlight-red">系统漏洞</span>：技能失效、自动锁屏等问题<br>
+                                <span class="highlight-red">内容不符</span>：宣传"无限关卡"实际不存在
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <div class="insight-card-content">
+                            <h3 class="insight-card-title">典型玩家评论</h3>
+                            <div class="insight-card-text">
+                                <em>"ライトストラテジー游戏中较为有趣。基本上是制造士兵应对敌人攻击的游戏，通过齿轮组合决定生产力。没有复杂的城市构造等设定，在这方面感受不到粗糙之处，很好。"</em><br><br>
+                                <span style="color: #666; font-size: 12px;">— 向井浩 ★★★★★ 2026-01-03</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: #fff; border: 1px solid var(--border); padding: 20px; margin-top: 24px;">
+                    <h4 style="font-family: 'Noto Sans SC', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 12px;">📊 日本区玩家画像</h4>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; text-align: center;">
+                        <div><div style="font-size: 20px; font-weight: 700; color: var(--accent);">休闲策略</div><div style="font-size: 12px; color: #666;">偏好轻度策略</div></div>
+                        <div><div style="font-size: 20px; font-weight: 700; color: #8b7355;">零付费</div><div style="font-size: 12px; color: #666;">广告变现为主</div></div>
+                        <div><div style="font-size: 20px; font-weight: 700; color: #666;">细节敏感</div><div style="font-size: 12px; color: #666;">关注体验完整性</div></div>
+                        <div><div style="font-size: 20px; font-weight: 700; color: #999;">口碑传播</div><div style="font-size: 12px; color: #666;">重视评价参考</div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 英文区玩家反馈 -->
+            <div>
+                <h3 style="font-family: 'Noto Sans SC', sans-serif; font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid var(--accent); display: inline-block;">🇺🇸 英文区玩家评价（App Store + Google Play）</h3>
+                
+                <div class="insight-cards">
+                    <div class="insight-card">
+                        <div class="insight-card-content">
+                            <h3 class="insight-card-title">好评高频点</h3>
+                            <div class="insight-card-text">
+                                <span class="highlight-bold">策略深度</span>："少量强力快速单位 > 大量普通单位混合"<br>
+                                <span class="highlight-bold">合并机制</span>：相同兵种齿轮合并是必须的，过多低级齿轮降低召唤速度<br>
+                                <span class="highlight">兵种搭配</span>：Lancer（枪骑兵）速度极快，Catifact（猫骑兵）范围伤害最佳<br>
+                                <span class="highlight">资源管理</span>：专注培养前2个主力兵种，过早分散拖慢进度
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <div class="insight-card-content">
+                            <h3 class="insight-card-title">差评高频点</h3>
+                            <div class="insight-card-text">
+                                <span class="highlight-red">抽卡误导</span>：大部分抽到的是<strong>兵种材料</strong>而非完整单位<br>
+                                <span class="highlight-red">兵种失衡</span>：Archers（弓箭手）血低攻低移速慢<br>
+                                <span class="highlight-red">盾兵弱势</span>：Shield Troops易被击退，效率低<br>
+                                <span class="highlight-red">广告体验</span>：1.5倍速广告虽有用但频率影响体验
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <div class="insight-card-content">
+                            <h3 class="insight-card-title">典型玩家评论</h3>
+                            <div class="insight-card-text">
+                                <em>"The key is merging. Having too many low-level gears slows down your summon speed. Focus on 2 main units early, don't spread too thin. Lancer + Catifact combo is OP for pushing waves."</em><br><br>
+                                <span style="color: #666; font-size: 12px;">— StrategyGuide ★★★★★ 2026-02-15</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: #fff; border: 1px solid var(--border); padding: 20px; margin-top: 24px;">
+                    <h4 style="font-family: 'Noto Sans SC', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 12px;">📊 英文区玩家画像</h4>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; text-align: center;">
+                        <div><div style="font-size: 20px; font-weight: 700; color: var(--accent);">策略向</div><div style="font-size: 12px; color: #666;">偏好深度玩法</div></div>
+                        <div><div style="font-size: 20px; font-weight: 700; color: #8b7355;">轻付费</div><div style="font-size: 12px; color: #666;">月卡/ battle pass</div></div>
+                        <div><div style="font-size: 20px; font-weight: 700; color: #666;">攻略导向</div><div style="font-size: 12px; color: #666;">Wiki/Discord活跃</div></div>
+                        <div><div style="font-size: 20px; font-weight: 700; color: #999;">长线留存</div><div style="font-size: 12px; color: #666;">关注赛季更新</div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="footer-name">战略发展部 · 游戏竞品分析</div>
+            </div>
+            <div class="footer-about">
+                游卡网络 YOKAVERSE
+            </div>
+        </div>
+        <div class="footer-copyright">
+            © 2026 游卡网络战略发展部 | 数据来源：Sensor Tower、AppBrain、公开资料整理
+        </div>
+    </footer>
+
+    <!-- 图表脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            Chart.defaults.font.family = "'Noto Sans SC', 'PingFang SC', sans-serif";
+            Chart.defaults.color = '#666';
+
+            // 饼图 - 各地区收入占比（基于Sensor Tower截图数据：美国36.7%、日本8.9%、韩国7.8%、德国5.5%、台湾4.5%、其他32.6%）
+            new Chart(document.getElementById('pieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['美国 36.7%', '日本 8.9%', '韩国 7.8%', '德国 5.5%', '台湾 4.5%', '其他 32.6%'],
+                    datasets: [{
+                        data: [36.7, 8.9, 7.8, 5.5, 4.5, 32.6],
+                        backgroundColor: [
+                            '#c9a96e',
+                            '#8b7355',
+                            '#d4a574',
+                            '#a08060',
+                            '#e8c547',
+                            '#ccc'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 12,
+                                usePointStyle: true,
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 折线图 - 月流水趋势（基于提供的准确数据）
+            new Chart(document.getElementById('lineChart'), {
+                type: 'line',
+                data: {
+                    labels: ['2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03'],
+                    datasets: [{
+                        label: '月流水（万美元）',
+                        data: [0.8, 9.5, 34.7, 44.1, 45.1, 29.8],
+                        borderColor: '#c9a96e',
+                        backgroundColor: 'rgba(201, 169, 110, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#c9a96e',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e5e2dd'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '万美元';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
